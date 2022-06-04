@@ -75,7 +75,7 @@ class Base(object):
 
     def __change_role(self, username, role):
         users = self.__read_users()
-        user = users.get(username)
+        user = users.get(username)  # {'username': {role,create_time}}
         if not user:
             return False
 
@@ -83,7 +83,40 @@ class Base(object):
             raise RoleExistsError('not use role %s' % role)
 
         user['role'] = role
+        user['update_time'] = time.time()
+        users[username] = user
 
+        json_data = json.dumps(users)
+        with open(self.user_json, 'w') as f:
+            f.write(json_data)
+        return True
+
+    def __change_active(self, username):
+        users = self.__read_users()
+        user = users.get(username)
+        if not user:
+            return False
+
+        user['active'] = not user['active']
+        user['update_time'] = time.time()
+        users[username] = user
+
+        json_data = json.dumps(users)
+        with open(self.user_json, 'w') as f:
+            f.write(json_data)
+        return True
+
+    def __delete_user(self, username):
+        users = self.__read_users()
+        user = users.get(username)
+        if not user:
+            return False
+        delete_user = users.pop(username)
+
+        json_data = json.dumps(users)
+        with open(self.user_json, 'w') as f:
+            f.write(json_data)
+        return delete_user
 
 if __name__ == '__main__':
     gift_path = os.path.join(os.getcwd(), 'storage', 'gift.json')
@@ -93,3 +126,5 @@ if __name__ == '__main__':
     base = Base(user_json=user_path, gift_json=gift_path)
 
     base.write_user(username='huahua', role='admin')
+    #result = base.delete_user(username = 'huahua')
+    #print(result)
