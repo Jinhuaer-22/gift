@@ -109,9 +109,7 @@ class Base(object):
             {user['username']: user}
         )
 
-        json_users = json.dumps(users)
-        with open(self.user_json, 'w') as f:
-            f.write(json_users)
+        self.__save(users, self.user_json)
 
     def __change_role(self, username, role):
         users = self.__read_users()
@@ -126,9 +124,7 @@ class Base(object):
         user['update_time'] = time.time()
         users[username] = user
 
-        json_data = json.dumps(users)
-        with open(self.user_json, 'w') as f:
-            f.write(json_data)
+        self.__save(users, self.user_json)
         return True
 
     def __change_active(self, username):
@@ -141,9 +137,7 @@ class Base(object):
         user['update_time'] = time.time()
         users[username] = user
 
-        json_data = json.dumps(users)
-        with open(self.user_json, 'w') as f:
-            f.write(json_data)
+        self.__save(users, self.user_json)
         return True
 
     def __delete_user(self, username):
@@ -153,9 +147,7 @@ class Base(object):
             return False
         delete_user = users.pop(username)
 
-        json_data = json.dumps(users)
-        with open(self.user_json, 'w') as f:
-            f.write(json_data)
+        self.__save(users, self.user_json)
         return delete_user
 
     def __read_gifts(self):
@@ -191,9 +183,7 @@ class Base(object):
         if len(gifts) != 0:
             return
 
-        json_data = json.dumps(data)
-        with open(self.gift_json, 'w') as f:
-            f.write(json_data)
+        self.__save(data, self.gift_json)
 
     def write_gifts(self, first_level, second_level,
                     gift_name, gift_count):
@@ -211,17 +201,19 @@ class Base(object):
             gift_count = 1
 
         if gift_name in current_second_gift_pool:
-            current_second_gift_pool[gift_name] = current_second_gift_pool[gift_name]['count'] + gift_count
+            current_second_gift_pool[gift_name]['count'] = current_second_gift_pool[gift_name]['count'] + gift_count
         else:
             current_second_gift_pool[gift_name] = {'name': gift_name,
                                                    'count': gift_count
                                                    }
+        current_gift_pool[second_level] = current_second_gift_pool
+        gifts[first_level] = current_gift_pool
+        self.__save(gifts, self.gift_json)
 
-        gifts[first_level] = current_second_gift_pool
-        json_data = json.dumps(gifts)
-        with open(self.gift_json, 'w') as f:
+    def __save(self, data, path):
+        json_data = json.dumps(data, ensure_ascii=False)
+        with open(path, 'w', encoding= 'utf-8') as f:
             f.write(json_data)
-
 
 if __name__ == '__main__':
     gift_path = os.path.join(os.getcwd(), 'storage', 'gift.json')
@@ -230,6 +222,9 @@ if __name__ == '__main__':
     print(user_path)
     base = Base(user_json=user_path, gift_json=gift_path)
 
-    base.init_gifts()
+    base.write_gifts(first_level='level4',
+                     second_level='level1',
+                     gift_name='圆珠笔',
+                     gift_count=5)
     #result = base.delete_user(username = 'huahua')
     #print(result)
