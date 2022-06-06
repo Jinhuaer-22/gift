@@ -18,7 +18,7 @@ import json
 import os
 import time
 from common import utils
-from common.error import UserExistsError, RoleExistsError, LevelError
+from common.error import UserExistsError, RoleExistsError, LevelError, NegativeNumberError
 from common.utils import timestamp_to_string
 from common.consts import ROLES, FIRSTLEVELS, SECONDLEVELS
 
@@ -28,6 +28,8 @@ from common.consts import ROLES, FIRSTLEVELS, SECONDLEVELS
     3: gifts 奖品的添加
     4: gifts 初始化
       
+    1: gifts 修改（数量递减）
+    2：gifts 奖品删除
     { 
         level1：{
             level1：{
@@ -61,6 +63,7 @@ from common.consts import ROLES, FIRSTLEVELS, SECONDLEVELS
     }
      
 """
+
 
 class Base(object):
     def __init__(self, user_json, gift_json):
@@ -151,16 +154,16 @@ class Base(object):
         return delete_user
 
     def __read_gifts(self):
-        with open(self.gift_json) as f:
+        with open(self.gift_json, encoding='utf-8') as f:
             data = json.loads(f.read())
         return data
 
     def __init_gifts(self):
         data = {
             'level1': {
-                'level1':{},
-                'level2':{},
-                'level3':{}
+                'level1': {},
+                'level2': {},
+                'level3': {}
             },
             'level2': {
                 'level1': {},
@@ -185,8 +188,8 @@ class Base(object):
 
         self.__save(data, self.gift_json)
 
-    def write_gifts(self, first_level, second_level,
-                    gift_name, gift_count):
+    def __write_gifts(self, first_level, second_level,
+                      gift_name, gift_count):
         if first_level not in FIRSTLEVELS:
             raise LevelError('first level not exists')
         if second_level not in SECONDLEVELS:
@@ -210,10 +213,72 @@ class Base(object):
         gifts[first_level] = current_gift_pool
         self.__save(gifts, self.gift_json)
 
+    def __gifts_update(self, first_level, second_level,
+                     gift_name, gift_count=1):
+        data = self.__check_and_getgift(first_level, second_level, gift_name)
+
+        if data == False:
+            return data
+
+        current_gift_pool = data.get('level_one')
+        current_second_gift_pool = data.get('level_two')
+        gifts = data.get('gifts')
+
+        current_gift = current_second_gift_pool[gift_name]
+
+        if current_gift['count'] - gift_count < 0:
+            raise NegativeNumberError('gift count can not negative')
+
+        current_gift['count'] -= gift_count
+        current_second_gift_pool[gift_name] = current_gift
+        current_gift_pool[second_level] = current_second_gift_pool
+        gifts[first_level] = current_gift_pool
+
+        self.__save(gifts, self.gift_json)
+
+    def __check_and_getgift(self, first_level, second_level, gift_name):
+        if first_level not in FIRSTLEVELS:
+            raise LevelError('first level not exists')
+        if second_level not in SECONDLEVELS:
+            raise LevelError('second level not exists')
+
+        gifts = self.__read_gifts()
+
+        level_one = gifts[first_level]
+        level_two = level_one[second_level]
+
+        if gift_name not in level_two:
+            return False
+
+        return {
+            'level_one': level_one,
+            'level_two': level_two,
+            'gifts': gifts
+        }
+
+    def __delete_gift(self, first_level, second_level, gift_name):
+        data = self.__check_and_getgift(first_level, second_level, gift_name)
+
+        if data == False:
+            return data
+
+        current_gift_pool = data.get('level_one')
+        current_second_gift_pool = data.get('level_two')
+        gifts = data.get('gifts')
+
+        delete_gift = current_second_gift_pool.pop(gift_name)
+        current_gift_pool[second_level] = current_second_gift_pool
+        gifts[first_level] = current_gift_pool
+
+        self.__save(gifts, self.gift_json)
+
+        return delete_gift
+
     def __save(self, data, path):
         json_data = json.dumps(data, ensure_ascii=False)
-        with open(path, 'w', encoding= 'utf-8') as f:
+        with open(path, 'w', encoding='utf-8') as f:
             f.write(json_data)
+
 
 if __name__ == '__main__':
     gift_path = os.path.join(os.getcwd(), 'storage', 'gift.json')
@@ -222,9 +287,9 @@ if __name__ == '__main__':
     print(user_path)
     base = Base(user_json=user_path, gift_json=gift_path)
 
-    base.write_gifts(first_level='level4',
-                     second_level='level1',
-                     gift_name='圆珠笔',
-                     gift_count=5)
-    #result = base.delete_user(username = 'huahua')
-    #print(result)
+    result = base.delete_gift(first_level='level1',
+                      second_level='level2',
+                      gift_name='iphone11'
+                      )
+    # result = base.delete_user(username = 'huahua')
+    print(result)
