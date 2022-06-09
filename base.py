@@ -18,7 +18,7 @@ import json
 import os
 import time
 from common import utils
-from common.error import UserExistsError, RoleExistsError, LevelError, NegativeNumberError
+from common.error import UserExistsError, RoleExistsError, LevelError, NegativeNumberError, CountError
 from common.utils import timestamp_to_string
 from common.consts import ROLES, FIRSTLEVELS, SECONDLEVELS
 
@@ -80,7 +80,7 @@ class Base(object):
         utils.check_file(self.gift_json)
 
     def __read_users(self, time_to_str=False):
-        with open(self.user_json, 'r') as f:
+        with open(self.user_json, 'r', encoding='utf-8') as f:
             data = json.loads(f.read())
 
         if time_to_str:
@@ -214,7 +214,8 @@ class Base(object):
         self.__save(gifts, self.gift_json)
 
     def __gifts_update(self, first_level, second_level,
-                     gift_name, gift_count=1):
+                     gift_name, gift_count=1, is_admin = False):
+        assert isinstance(gift_count, int), 'gift count is a int'
         data = self.__check_and_getgift(first_level, second_level, gift_name)
 
         if data == False:
@@ -226,10 +227,14 @@ class Base(object):
 
         current_gift = current_second_gift_pool[gift_name]
 
-        if current_gift['count'] - gift_count < 0:
-            raise NegativeNumberError('gift count can not negative')
-
-        current_gift['count'] -= gift_count
+        if is_admin == True:
+            if gift_count <= 0:
+                raise CountError('gift count not 0')
+            current_gift['count'] = gift_count
+        else:
+            if current_gift['count'] - gift_count < 0:
+                raise NegativeNumberError('gift count can not negative')
+            current_gift['count'] -= gift_count
         current_second_gift_pool[gift_name] = current_gift
         current_gift_pool[second_level] = current_second_gift_pool
         gifts[first_level] = current_gift_pool
