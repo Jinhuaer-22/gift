@@ -86,5 +86,10 @@ if __name__ == '__main__':
     # print(admin.name, admin.role)
     # admin.update_user_role('小花', 'normal')
     # admin.delete_gift('level1', 'level2', 'xiaomi')
-    admin.update_gift('level2', 'level3', 'ipad', 15)
+    # admin.update_gift('level2', 'level3', 'ipad', 15)
+    admin.add_gift(first_level='level1',
+                   second_level='level2',
+                   gift_name='iphone11',
+                   gift_count= 5
+                      )
 
